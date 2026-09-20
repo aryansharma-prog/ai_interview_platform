@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { authService } from '@/services/authService';
+import { clearTokens, getAccessToken, setTokens } from '@/utils/tokenStorage';
 import type { User } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -19,16 +20,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (!token) {
       setLoading(false);
       return;
     }
     try {
       const { data } = await authService.me();
-      setUser(data.data.user);
+      const currentUser = data?.data?.user || data?.user || (data?.email ? data : null);
+      setUser(currentUser);
     } catch {
-      localStorage.clear();
+      clearTokens();
       setUser(null);
     } finally {
       setLoading(false);
@@ -42,17 +44,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const { data } = await authService.login({ email, password });
-    localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
-    setUser(data.data.user);
+    const accessToken = data?.data?.accessToken || data?.accessToken || data?.token;
+    const refreshToken = data?.data?.refreshToken || data?.refreshToken;
+    const userData = data?.data?.user || data?.user;
+
+    setTokens({ accessToken, refreshToken });
+    if (userData) setUser(userData);
     toast.success('Welcome back!');
   };
 
   const register = async (name: string, email: string, password: string) => {
     const { data } = await authService.register({ name, email, password });
-    localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
-    setUser(data.data.user);
+    const accessToken = data?.data?.accessToken || data?.accessToken || data?.token;
+    const refreshToken = data?.data?.refreshToken || data?.refreshToken;
+    const userData = data?.data?.user || data?.user;
+
+    setTokens({ accessToken, refreshToken });
+    if (userData) setUser(userData);
     toast.success('Account created! Please verify your email.');
   };
 
@@ -62,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore network errors on logout */
     }
-    localStorage.clear();
+    clearTokens();
     setUser(null);
   };
 

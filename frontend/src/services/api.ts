@@ -1,12 +1,21 @@
 import axios from 'axios';
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '@/utils/tokenStorage';
+
+const rawBaseUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+export const API_BASE_URL = rawBaseUrl
+  ? rawBaseUrl.endsWith('/api')
+    ? rawBaseUrl
+    : `${rawBaseUrl}/api`
+  : '/api';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -20,10 +29,9 @@ api.interceptors.response.use(
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getRefreshToken();
       if (!refreshToken) {
-        localStorage.clear();
-        window.location.href = '/login';
+        clearTokens();
         return Promise.reject(error);
       }
 
@@ -35,14 +43,20 @@ api.interceptors.response.use(
 
       isRefreshing = true;
       try {
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
-        localStorage.setItem('accessToken', data.data.accessToken);
+        const { data } = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken },
+          { withCredentials: true }
+        );
+        const newAccessToken = data?.data?.accessToken || data?.accessToken || data?.token;
+        if (newAccessToken) {
+          setTokens({ accessToken: newAccessToken });
+        }
         pendingQueue.forEach((cb) => cb());
         pendingQueue = [];
         return api(original);
       } catch (refreshErr) {
-        localStorage.clear();
-        window.location.href = '/login';
+        clearTokens();
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
@@ -53,3 +67,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+

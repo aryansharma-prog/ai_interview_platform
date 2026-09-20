@@ -25,10 +25,14 @@ export default function Login() {
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     try {
-      await login(values.email, values.password);
+      await login(values.email.trim(), values.password);
       navigate('/dashboard');
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Login failed');
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.errors?.[0] ||
+        'Invalid email or password.';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -42,7 +46,13 @@ export default function Login() {
           type="email"
           placeholder="you@example.com"
           error={errors.email?.message}
-          {...register('email', { required: 'Email is required' })}
+          {...register('email', {
+            required: 'Email is required',
+            pattern: {
+              value: /^\S+@\S+\.\S+$/,
+              message: 'Please enter a valid email address',
+            },
+          })}
         />
         <Input
           label="Password"
@@ -56,7 +66,7 @@ export default function Login() {
             Forgot password?
           </Link>
         </div>
-        <Button type="submit" className="w-full" isLoading={loading}>
+        <Button type="submit" className="w-full" isLoading={loading} disabled={loading}>
           Log in
         </Button>
       </form>
@@ -69,3 +79,4 @@ export default function Login() {
     </AuthLayout>
   );
 }
+

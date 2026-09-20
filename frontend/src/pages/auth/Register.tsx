@@ -11,6 +11,7 @@ interface FormValues {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 export default function Register() {
@@ -20,16 +21,23 @@ export default function Register() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FormValues>();
+
+  const passwordValue = watch('password');
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     try {
-      await registerUser(values.name, values.email, values.password);
+      await registerUser(values.name.trim(), values.email.trim(), values.password);
       navigate('/dashboard');
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Registration failed');
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.errors?.[0] ||
+        'Registration failed. Please try again.';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -49,7 +57,13 @@ export default function Register() {
           type="email"
           placeholder="you@example.com"
           error={errors.email?.message}
-          {...register('email', { required: 'Email is required' })}
+          {...register('email', {
+            required: 'Email is required',
+            pattern: {
+              value: /^\S+@\S+\.\S+$/,
+              message: 'Please enter a valid email address',
+            },
+          })}
         />
         <Input
           label="Password"
@@ -58,10 +72,20 @@ export default function Register() {
           error={errors.password?.message}
           {...register('password', {
             required: 'Password is required',
-            minLength: { value: 8, message: 'Must be at least 8 characters' },
+            minLength: { value: 8, message: 'Password must be at least 8 characters' },
           })}
         />
-        <Button type="submit" className="w-full" isLoading={loading}>
+        <Input
+          label="Confirm Password"
+          type="password"
+          placeholder="Re-enter your password"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword', {
+            required: 'Please confirm your password',
+            validate: (val) => val === passwordValue || 'Passwords do not match',
+          })}
+        />
+        <Button type="submit" className="w-full" isLoading={loading} disabled={loading}>
           Create account
         </Button>
       </form>
@@ -74,3 +98,4 @@ export default function Register() {
     </AuthLayout>
   );
 }
+

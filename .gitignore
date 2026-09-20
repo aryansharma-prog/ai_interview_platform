@@ -6,3 +6,4 @@ build/
 backend/uploads/*
 !backend/uploads/.gitkeep
 .DS_Store
+scratch/
