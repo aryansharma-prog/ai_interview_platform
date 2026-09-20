@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: ai-interview-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - ai-interview-net
+
+  backend:
+    build: ./backend
+    container_name: ai-interview-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/ai-interview-platform
+    ports:
+      - '5000:5000'
+    depends_on:
+      - mongo
+    volumes:
+      - backend-uploads:/app/uploads
+    networks:
+      - ai-interview-net
+
+  frontend:
+    build: ./frontend
+    container_name: ai-interview-frontend
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - ai-interview-net
+
+networks:
+  ai-interview-net:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  backend-uploads:
