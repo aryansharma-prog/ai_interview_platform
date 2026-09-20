@@ -33,7 +33,7 @@ const register = asyncHandler(async (req, res) => {
     emailVerificationExpires: Date.now() + 24 * 60 * 60 * 1000,
   });
 
-  await sendVerificationEmail(user.email, verificationToken);
+  sendVerificationEmail(user.email, verificationToken).catch(() => {});
   const { accessToken, refreshToken } = await issueTokens(user);
 
   sendSuccess(res, {
@@ -112,7 +112,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
     user.passwordResetTokenHash = hashToken(resetToken);
     user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
     await user.save({ validateBeforeSave: false });
-    await sendPasswordResetEmail(user.email, resetToken);
+    sendPasswordResetEmail(user.email, resetToken).catch(() => {});
   }
   sendSuccess(res, { message: 'If that email exists, a password reset link has been sent.' });
 });
